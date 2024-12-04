@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestion des Données SDIS 66</title>
+    <title>Scanner Code Barre/QR - SDIS 66</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -97,53 +97,13 @@
             cursor: pointer;
             margin-top: 10px;
         }
-
-        #data-list {
-            margin-top: 20px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            font-size: 14px;
-            word-wrap: break-word;
-        }
-
-        th {
-            background-color: #f4f4f4;
-        }
-
-        @media (max-width: 600px) {
-            header h1 {
-                font-size: 16px;
-            }
-
-            input, button {
-                font-size: 14px;
-                padding: 8px;
-            }
-
-            table th, table td {
-                font-size: 12px;
-                padding: 5px;
-            }
-
-            #modal-content {
-                padding: 10px;
-            }
-        }
     </style>
     <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
 </head>
 <body>
     <header>
         <img src="https://www.sdis66.fr/logo.png" alt="Logo SDIS 66">
-        <h1>Gestion des Données - SDIS 66</h1>
+        <h1>Scanner Code Barre/QR - SDIS 66</h1>
     </header>
 
     <form id="data-form">
@@ -151,9 +111,6 @@
         <input type="text" id="champ2" placeholder="Matricule" required>
         <input type="text" id="champ3" placeholder="Numéro de série ou code barre" readonly>
         <button type="button" class="yellow-button" id="scan-barcode">Scanner Code Barre/QR</button>
-        <button type="button" class="red-button" id="save-data">Enregistrer</button>
-        <button type="button" class="yellow-button" id="export-csv">Exporter en CSV</button>
-        <button type="button" class="red-button" id="export-email">Exporter par Email</button>
     </form>
 
     <div id="modal">
@@ -163,44 +120,30 @@
         </div>
     </div>
 
-    <div id="data-list">
-        <h2>Liste des Données Enregistrées</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Nom</th>
-                    <th>Matricule</th>
-                    <th>Numéro de Série/Code Barre</th>
-                </tr>
-            </thead>
-            <tbody id="data-table-body"></tbody>
-        </table>
-    </div>
-
     <script>
-        let dataList = [];
         let html5QrCode;
 
+        // Ouvrir le scanner dans une fenêtre modale
         document.getElementById('scan-barcode').addEventListener('click', () => {
             const modal = document.getElementById('modal');
             modal.style.display = 'flex';
 
-            const preview = document.getElementById('camera-preview');
+            // Préparer le scanner
             html5QrCode = new Html5Qrcode("camera-preview");
-
             html5QrCode.start(
-                { facingMode: "environment" },
-                { fps: 10, qrbox: 250 },
+                { facingMode: "environment" }, // Utilisation de la caméra arrière
+                { fps: 10, qrbox: 250 }, // Fréquence et taille de la zone de scan
                 (decodedText) => {
-                    document.getElementById('champ3').value = decodedText;
-                    closeModal();
+                    document.getElementById('champ3').value = decodedText; // Insérer le résultat dans le champ
+                    closeModal(); // Fermer le scanner après lecture
                 },
                 (errorMessage) => {
-                    console.log("Scanning error:", errorMessage);
+                    console.log("Erreur de scan :", errorMessage); // Logs pour le débogage
                 }
-            ).catch((err) => console.error("Camera initialization error:", err));
+            ).catch((err) => console.error("Erreur d'initialisation de la caméra :", err));
         });
 
+        // Fermer la fenêtre modale et arrêter le scanner
         document.getElementById('close-modal').addEventListener('click', closeModal);
 
         function closeModal() {
@@ -209,57 +152,9 @@
             if (html5QrCode) {
                 html5QrCode.stop().then(() => {
                     html5QrCode.clear();
-                });
+                }).catch(err => console.error("Erreur lors de l'arrêt du scanner :", err));
             }
         }
-
-        document.getElementById('save-data').addEventListener('click', () => {
-            const champ1 = document.getElementById('champ1').value;
-            const champ2 = document.getElementById('champ2').value;
-            const champ3 = document.getElementById('champ3').value;
-
-            if (!champ1 || !champ2 || !champ3) {
-                alert("Veuillez remplir tous les champs !");
-                return;
-            }
-
-            dataList.push({ champ1, champ2, champ3 });
-            updateTable();
-            document.getElementById('data-form').reset();
-        });
-
-        function updateTable() {
-            const tbody = document.getElementById('data-table-body');
-            tbody.innerHTML = dataList.map(row => `
-                <tr>
-                    <td>${row.champ1}</td>
-                    <td>${row.champ2}</td>
-                    <td>${row.champ3}</td>
-                </tr>
-            `).join('');
-        }
-
-        document.getElementById('export-csv').addEventListener('click', () => {
-            let csvContent = "data:text/csv;charset=utf-8,Nom,Matricule,Numéro de Série/Code Barre\n" +
-                dataList.map(row => `${row.champ1},${row.champ2},${row.champ3}`).join("\n");
-
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "data_sdis66.csv");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        });
-
-        document.getElementById('export-email').addEventListener('click', () => {
-            const subject = "Export des Données SDIS 66";
-            const body = encodeURIComponent(
-                "Voici les données exportées :\n\n" +
-                dataList.map(row => `Nom: ${row.champ1}, Matricule: ${row.champ2}, Numéro: ${row.champ3}`).join("\n")
-            );
-            window.location.href = `mailto:?subject=${subject}&body=${body}`;
-        });
     </script>
 </body>
 </html>
