@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion des Données SDIS 66</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 10px;
+            text-align: center;
+        }
+
+        header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        header img {
+            height: 50px;
+            margin-bottom: 10px;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 18px;
+            text-align: center;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input, button {
+            width: 90%;
+            max-width: 400px;
+            padding: 10px;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        button {
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .yellow-button {
+            background-color: yellow;
+            color: black;
+            font-weight: bold;
+        }
+
+        .red-button {
+            background-color: red;
+            color: white;
+            font-weight: bold;
+        }
+
+        #modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        #modal-content {
+            background-color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            width: 90%;
+            max-width: 400px;
+        }
+
+        #modal-content video {
+            width: 100%;
+            height: auto;
+        }
+
+        #close-modal {
+            background-color: red;
+            color: white;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        #data-list {
+            margin-top: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            font-size: 14px;
+            word-wrap: break-word;
+        }
+
+        th {
+            background-color: #f4f4f4;
+        }
+
+        @media (max-width: 600px) {
+            header h1 {
+                font-size: 16px;
+            }
+
+            input, button {
+                font-size: 14px;
+                padding: 8px;
+            }
+
+            table th, table td {
+                font-size: 12px;
+                padding: 5px;
+            }
+
+            #modal-content {
+                padding: 10px;
+            }
+        }
+    </style>
+    <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
+</head>
+<body>
+    <header>
+        <img src="https://www.sdis66.fr/logo.png" alt="Logo SDIS 66">
+        <h1>Gestion des Données - SDIS 66</h1>
+    </header>
+
+    <form id="data-form">
+        <input type="text" id="champ1" placeholder="Nom" required>
+        <input type="text" id="champ2" placeholder="Matricule" required>
+        <input type="text" id="champ3" placeholder="Numéro de série ou code barre" readonly>
+        <button type="button" class="yellow-button" id="scan-barcode">Scanner Code Barre/QR</button>
+        <button type="button" class="red-button" id="save-data">Enregistrer</button>
+        <button type="button" class="yellow-button" id="export-csv">Exporter en CSV</button>
+        <button type="button" class="red-button" id="export-email">Exporter par Email</button>
+    </form>
+
+    <div id="modal">
+        <div id="modal-content">
+            <div id="camera-preview"></div>
+            <button id="close-modal">Fermer</button>
+        </div>
+    </div>
+
+    <div id="data-list">
+        <h2>Liste des Données Enregistrées</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Nom</th>
+                    <th>Matricule</th>
+                    <th>Numéro de Série/Code Barre</th>
+                </tr>
+            </thead>
+            <tbody id="data-table-body"></tbody>
+        </table>
+    </div>
+
+    <script>
+        let dataList = [];
+        let html5QrCode;
+
+        document.getElementById('scan-barcode').addEventListener('click', () => {
+            const modal = document.getElementById('modal');
+            modal.style.display = 'flex';
+
+            const preview = document.getElementById('camera-preview');
+            html5QrCode = new Html5Qrcode("camera-preview");
+
+            html5QrCode.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: 250 },
+                (decodedText) => {
+                    document.getElementById('champ3').value = decodedText;
+                    closeModal();
+                },
+                (errorMessage) => {
+                    console.log("Scanning error:", errorMessage);
+                }
+            ).catch((err) => console.error("Camera initialization error:", err));
+        });
+
+        document.getElementById('close-modal').addEventListener('click', closeModal);
+
+        function closeModal() {
+            const modal = document.getElementById('modal');
+            modal.style.display = 'none';
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    html5QrCode.clear();
+                });
+            }
+        }
+
+        document.getElementById('save-data').addEventListener('click', () => {
+            const champ1 = document.getElementById('champ1').value;
+            const champ2 = document.getElementById('champ2').value;
+            const champ3 = document.getElementById('champ3').value;
+
+            if (!champ1 || !champ2 || !champ3) {
+                alert("Veuillez remplir tous les champs !");
+                return;
+            }
+
+            dataList.push({ champ1, champ2, champ3 });
+            updateTable();
+            document.getElementById('data-form').reset();
+        });
+
+        function updateTable() {
+            const tbody = document.getElementById('data-table-body');
+            tbody.innerHTML = dataList.map(row => `
+                <tr>
+                    <td>${row.champ1}</td>
+                    <td>${row.champ2}</td>
+                    <td>${row.champ3}</td>
+                </tr>
+            `).join('');
+        }
+
+        document.getElementById('export-csv').addEventListener('click', () => {
+            let csvContent = "data:text/csv;charset=utf-8,Nom,Matricule,Numéro de Série/Code Barre\n" +
+                dataList.map(row => `${row.champ1},${row.champ2},${row.champ3}`).join("\n");
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "data_sdis66.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        document.getElementById('export-email').addEventListener('click', () => {
+            const subject = "Export des Données SDIS 66";
+            const body = encodeURIComponent(
+                "Voici les données exportées :\n\n" +
+                dataList.map(row => `Nom: ${row.champ1}, Matricule: ${row.champ2}, Numéro: ${row.champ3}`).join("\n")
+            );
+            window.location.href = `mailto:?subject=${subject}&body=${body}`;
+        });
+    </script>
+</body>
+</html>
