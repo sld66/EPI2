@@ -3,157 +3,193 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scanner Code Barre/QR - SDIS 66</title>
+    <title>SDIS 66 - Enregistrement</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 10px;
-            text-align: center;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
         }
 
         header {
             display: flex;
-            flex-direction: column;
             align-items: center;
-            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #d60000;
+            color: white;
         }
 
         header img {
             height: 50px;
-            margin-bottom: 10px;
+            margin-right: 10px;
         }
 
         header h1 {
-            margin: 0;
-            font-size: 18px;
-            text-align: center;
+            font-size: 1.5rem;
+        }
+
+        main {
+            padding: 20px;
         }
 
         form {
             display: flex;
             flex-direction: column;
-            align-items: center;
-            gap: 10px;
+            gap: 15px;
+            max-width: 500px;
+            margin: auto;
+        }
+
+        label {
+            font-weight: bold;
         }
 
         input, button {
-            width: 90%;
-            max-width: 400px;
             padding: 10px;
-            font-size: 14px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
+            font-size: 1rem;
         }
 
         button {
-            font-size: 16px;
             cursor: pointer;
         }
 
-        .yellow-button {
+        #scan-button {
             background-color: yellow;
-            color: black;
-            font-weight: bold;
+            border: 1px solid #000;
         }
 
-        .red-button {
-            background-color: red;
-            color: white;
-            font-weight: bold;
-        }
-
-        #modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-
-        #modal-content {
-            background-color: white;
-            padding: 15px;
-            border-radius: 10px;
-            text-align: center;
-            width: 90%;
-            max-width: 400px;
-        }
-
-        #modal-content video {
-            width: 100%;
-            height: auto;
-        }
-
-        #close-modal {
+        #save-button, #csv-button, #email-button {
             background-color: red;
             color: white;
             border: none;
+        }
+
+        .data-list {
+            margin-top: 20px;
+            max-width: 500px;
+            margin: 20px auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
             padding: 10px;
-            cursor: pointer;
-            margin-top: 10px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+
+        @media (max-width: 600px) {
+            form, .data-list {
+                width: 100%;
+            }
+
+            button {
+                font-size: 0.9rem;
+            }
         }
     </style>
-    <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
 </head>
 <body>
     <header>
-        <img src="https://www.sdis66.fr/logo.png" alt="Logo SDIS 66">
-        <h1>Scanner Code Barre/QR - SDIS 66</h1>
+        <img src="logo_sdis66.png" alt="Logo SDIS 66">
+        <h1>Enregistrement des données</h1>
     </header>
+    <main>
+        <form id="data-form">
+            <label for="nom">Nom:</label>
+            <input type="text" id="nom" name="nom" placeholder="Entrez le nom" required>
+            
+            <label for="matricule">Matricule:</label>
+            <input type="text" id="matricule" name="matricule" placeholder="Entrez le matricule" required>
+            
+            <label for="code-barre">Numéro de série / Code barre:</label>
+            <input type="text" id="code-barre" name="code-barre" placeholder="Scannez ou entrez un code" required>
+            
+            <button type="button" id="scan-button" onclick="openScanner()">Scan de codes-barres</button>
+            <button type="button" id="save-button" onclick="saveData()">Enregistrer</button>
+            <button type="button" id="csv-button" onclick="exportCSV()">Export en CSV</button>
+            <button type="button" id="email-button" onclick="exportEmail()">Export via Mail</button>
+        </form>
 
-    <form id="data-form">
-        <input type="text" id="champ1" placeholder="Nom" required>
-        <input type="text" id="champ2" placeholder="Matricule" required>
-        <input type="text" id="champ3" placeholder="Numéro de série ou code barre" readonly>
-        <button type="button" class="yellow-button" id="scan-barcode">Scanner Code Barre/QR</button>
-    </form>
-
-    <div id="modal">
-        <div id="modal-content">
-            <div id="camera-preview"></div>
-            <button id="close-modal">Fermer</button>
+        <div class="data-list">
+            <h2>Données enregistrées</h2>
+            <table id="data-table">
+                <thead>
+                    <tr>
+                        <th>Nom</th>
+                        <th>Matricule</th>
+                        <th>Numéro de série / Code barre</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
         </div>
-    </div>
-
+    </main>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const scannedCode = urlParams.get("scannedCode");
+        if (scannedCode) {
+            document.getElementById("code-barre").value = scannedCode;
+        }
+    });
+</script>
     <script>
-        let html5QrCode;
+        const dataList = [];
 
-        // Ouvrir le scanner dans une fenêtre modale
-        document.getElementById('scan-barcode').addEventListener('click', () => {
-            const modal = document.getElementById('modal');
-            modal.style.display = 'flex';
+        function openScanner() {
+            // Rediriger vers une page scanner (exemple "scanner.html")
+            window.location.href = "scanner.html";
+        }
 
-            // Préparer le scanner
-            html5QrCode = new Html5Qrcode("camera-preview");
-            html5QrCode.start(
-                { facingMode: "environment" }, // Utilisation de la caméra arrière
-                { fps: 10, qrbox: 250 }, // Fréquence et taille de la zone de scan
-                (decodedText) => {
-                    document.getElementById('champ3').value = decodedText; // Insérer le résultat dans le champ
-                    closeModal(); // Fermer le scanner après lecture
-                },
-                (errorMessage) => {
-                    console.log("Erreur de scan :", errorMessage); // Logs pour le débogage
-                }
-            ).catch((err) => console.error("Erreur d'initialisation de la caméra :", err));
-        });
+        function saveData() {
+            const nom = document.getElementById('nom').value;
+            const matricule = document.getElementById('matricule').value;
+            const codeBarre = document.getElementById('code-barre').value;
 
-        // Fermer la fenêtre modale et arrêter le scanner
-        document.getElementById('close-modal').addEventListener('click', closeModal);
-
-        function closeModal() {
-            const modal = document.getElementById('modal');
-            modal.style.display = 'none';
-            if (html5QrCode) {
-                html5QrCode.stop().then(() => {
-                    html5QrCode.clear();
-                }).catch(err => console.error("Erreur lors de l'arrêt du scanner :", err));
+            if (nom && matricule && codeBarre) {
+                dataList.push({ nom, matricule, codeBarre });
+                updateTable();
+                document.getElementById('data-form').reset();
+            } else {
+                alert('Veuillez remplir tous les champs.');
             }
+        }
+
+        function updateTable() {
+            const tableBody = document.querySelector('#data-table tbody');
+            tableBody.innerHTML = '';
+            dataList.forEach((data, index) => {
+                const row = `<tr>
+                    <td>${data.nom}</td>
+                    <td>${data.matricule}</td>
+                    <td>${data.codeBarre}</td>
+                </tr>`;
+                tableBody.innerHTML += row;
+            });
+        }
+
+        function exportCSV() {
+            let csvContent = "data:text/csv;charset=utf-8,Nom,Matricule,Code Barre\n";
+            dataList.forEach(item => {
+                csvContent += `${item.nom},${item.matricule},${item.codeBarre}\n`;
+            });
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "data_sdis66.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function exportEmail() {
+            alert("Cette fonctionnalité nécessite une configuration backend ou une API d'envoi d'email.");
         }
     </script>
 </body>

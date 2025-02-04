@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scanner de codes-barres</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f4f4f9;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background-color: #d60000;
+            color: white;
+            width: 100%;
+        }
+
+        header img {
+            height: 50px;
+            margin-right: 10px;
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+        }
+
+        #video-container {
+            width: 100%;
+            max-width: 600px;
+            margin: 20px 0;
+            position: relative;
+        }
+
+        #scanner-video {
+            width: 100%;
+            height: auto;
+            border: 2px solid yellow;
+        }
+
+        #result {
+            margin-top: 20px;
+            padding: 10px;
+            font-size: 1.2rem;
+            text-align: center;
+            color: green;
+            border: 2px solid green;
+            display: none;
+        }
+
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 1rem;
+            background-color: #d60000;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <img src="logo_sdis66.png" alt="Logo SDIS 66">
+        <h1>Scanner de codes-barres</h1>
+    </header>
+
+    <!-- Conteneur vidéo pour afficher le retour caméra -->
+    <div id="video-container">
+        <video id="scanner-video" autoplay playsinline></video>
+    </div>
+
+    <!-- Résultat après détection -->
+    <div id="result">Code barre détecté : <span id="code-result"></span></div>
+    <button onclick="returnToMain()">Retour</button>
+
+    <script>
+        function startScanner() {
+            Quagga.init({
+                inputStream: {
+                    name: "Live",
+                    type: "LiveStream",
+                    target: document.querySelector("#scanner-video"), // Retour vidéo
+                    constraints: {
+                        width: 640,
+                        height: 480,
+                        facingMode: "environment" // Caméra arrière
+                    }
+                },
+                decoder: {
+                    readers: ["code_128_reader", "ean_reader", "ean_8_reader"] // Types de codes-barres à détecter
+                }
+            }, function(err) {
+                if (err) {
+                    console.error(err);
+                    alert("Erreur lors de l'initialisation du scanner.");
+                    return;
+                }
+                Quagga.start();
+            });
+
+            // Gérer la détection des codes-barres
+            Quagga.onDetected(function(data) {
+                const code = data.codeResult.code;
+                document.getElementById("code-result").textContent = code;
+                document.getElementById("result").style.display = "block";
+                Quagga.stop(); // Arrête la détection après avoir trouvé un code
+
+                // Redirige vers la page principale avec le code détecté
+                setTimeout(() => {
+                    window.location.href = `index.html?scannedCode=${encodeURIComponent(code)}`;
+                }, 2000);
+            });
+        }
+
+        function returnToMain() {
+            window.location.href = "index.html";
+        }
+
+        // Lancement du scanner au chargement de la page
+        document.addEventListener("DOMContentLoaded", startScanner);
+    </script>
+</body>
+</html>
